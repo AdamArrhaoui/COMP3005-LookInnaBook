@@ -115,3 +115,40 @@ CREATE TABLE BooksInOrders (
     FOREIGN KEY (isbn) REFERENCES Books(isbn),
     FOREIGN KEY (oid) REFERENCES Orders(oid)
 );
+
+
+CREATE PROCEDURE add_book (
+    IN isbn NUMERIC(10, 0),
+    IN pid INT,
+    IN title VARCHAR(100),
+    IN publish_date DATE,
+    IN num_pages INT,
+    IN price NUMERIC(6, 2),
+    IN publisher_cut NUMERIC(4, 3),
+    IN stock_num INT,
+    IN author_ids INT[]
+)
+AS $$
+BEGIN
+    -- Add the book to the Books table
+    INSERT INTO Books (isbn, pid, title, publish_date, num_pages, price, publisher_cut, stock_num)
+    VALUES (isbn, pid, title, publish_date, num_pages, price, publisher_cut, stock_num);
+
+    -- Add the author IDs as authors of the book in the BookAuthors table
+    INSERT INTO BookAuthors (isbn, aid)
+    SELECT isbn, aid
+    FROM unnest(author_ids) as aid;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE PROCEDURE add_author_to_book (
+    IN isbn NUMERIC(10, 0),
+    IN aid INT
+)
+AS $$
+BEGIN
+    -- Add the author to the book
+    INSERT INTO BookAuthors (isbn, aid)
+    VALUES (isbn, aid);
+END;
+$$ LANGUAGE plpgsql;

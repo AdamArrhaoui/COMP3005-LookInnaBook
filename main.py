@@ -20,9 +20,39 @@ def print_hi(name):
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    main_menu = ConsoleMenu("Main Menu", "Please select an option below")
-    book_menu = SelectionMenu(test_items, "Book List", "Choose da book")
-    main_menu.append_item(SubmenuItem("Go to da submenu", book_menu))
-    main_menu.show()
+    # main_menu = ConsoleMenu("Main Menu", "Please select an option below")
+    # book_menu = SelectionMenu(test_items, "Book List", "Choose da book")
+    # main_menu.append_item(SubmenuItem("Go to da submenu", book_menu))
+    # main_menu.show()
+
+    import PySimpleGUI as sg
+    import psycopg2
+
+    # Connect to an existing database
+    conn = psycopg2.connect("dbname=bookstore user=postgres password=postgres")
+
+    # Open a cursor to perform database operations
+    cur = conn.cursor()
+
+    # Query the database and obtain data as Python objects
+    cur.execute("SELECT * FROM books")
+    books = cur.fetchall()
+
+    # Make the window
+    layout = [
+        [sg.Text('Bookstore')],
+        [sg.Listbox(values=books, size=(40, 6))],
+        [sg.Button('Exit')]
+    ]
+
+    window = sg.Window('Bookstore', layout)
+
+    # Event Loop to process "events" and get the "values" of the inputs
+    while True:
+        event, values = window.read()
+        if event == sg.WIN_CLOSED or event == 'Exit':  # if user closes window or clicks cancel
+            break
+
+    window.close()
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
