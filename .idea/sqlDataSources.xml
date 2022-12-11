@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
+  <component name="DdlMappings">
+    <mapping uuid="ddbf397d-e18d-47c1-adb6-6ba7225545c8" name="DDL Mapping" />
+  </component>
   <component name="SqlDataSourceStorage">
     <option name="dataSources">
       <list>
