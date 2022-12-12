@@ -102,7 +102,7 @@ CREATE TABLE Orders (
     order_date DATE NOT NULL DEFAULT CURRENT_DATE,
     billing_info VARCHAR(200) NOT NULL,
     shipping_info VARCHAR(150) NOT NULL,
-    order_status status NOT NULL,
+    order_status status NOT NULL DEFAULT 'Pending Payment',
     tracking_number CHAR(20),
     FOREIGN KEY (uid) REFERENCES Users(uid)
 );
