@@ -163,7 +163,8 @@ def main():
         [sg.Text("quantity:"), sg.Spin(values=[*range(1, 100)], key="in_quantity", size=3), sg.Button('Add to Cart')]
     ])
 
-    current_cart = {'1234567890': ["harry Botter", 1, 15.99]}
+    current_cart = {}
+    # current_cart = {'1234567890': ["harry Botter", 1, 15.99]}
     cart_tab = sg.Tab("Cart", [
         [sg.Text('This is your shopping cart')],
         [sg.Table(values=[[key] + current_cart[key] for key in current_cart.keys()],
@@ -206,8 +207,34 @@ def main():
                 current_cart[selected_isbn] = [selected_title, selected_quantity, selected_price * selected_quantity]
             window.Element("cart_table").Update(values=[[key] + current_cart[key] for key in current_cart.keys()])
             sg.popup_ok(f"Added {selected_quantity} copies of '{selected_title}' to cart!")
-    window.close()
 
+        if event == 'Purchase':
+            if len(current_cart) == 0:
+                sg.popup_ok("There's nothing in your cart!")
+                continue
+
+            answer = sg.popup_yes_no("Are you sure you want to order all the items in your cart?")
+            if answer and answer == "Yes":
+                try:
+                    cur.execute(f"INSERT INTO orders (uid, billing_info, shipping_info) VALUES ({logged_in_uid}, 'Placeholder', 'Placeholder') RETURNING oid")
+                    new_oid = cur.fetchone()[0]
+                    data = [(key, new_oid, current_cart[key][1]) for key in current_cart.keys()]
+                    records_list_template = ','.join(['%s'] * len(data))
+                    insert_query = 'INSERT INTO booksinorders (isbn, oid, quantity) VALUES {}'.format(records_list_template)
+                    cur.execute(insert_query, data)
+                except Exception as e:
+                    sg.popup_error(e)
+                    continue
+                else:
+                    conn.commit()
+                    sg.popup_ok("Order placed!")
+                    current_cart = {}
+                    window.Element("cart_table").Update(values=[[]])
+            else:
+                continue
+
+    window.close()
+    cur.close()
 
 
 
