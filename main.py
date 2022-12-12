@@ -22,9 +22,6 @@ def db_login_prompt(default_dbname='bookstore', default_user='postgres', default
         event, values = window.read()
         if event in (sg.WIN_CLOSED, 'Exit'):
             break
-        # if last character in input element is invalid, remove it
-        if event == sg.WIN_CLOSED:
-            break
         if event == "Submit":
             try:
                 connection_text = f"dbname={values['dbname']} user={values['user']} password={values['password']}"
@@ -35,6 +32,8 @@ def db_login_prompt(default_dbname='bookstore', default_user='postgres', default
                     return conn
             except Exception as e:
                 sg.popup_error(e, title="Error connecting to database!")
+    window.close()
+    exit()
 
 
 def ensure_tables_exist(conn):
@@ -89,11 +88,13 @@ def show_login_signup(conn: psycopg2.extensions.connection) -> tuple[int, str, s
         ]
         # create the window and show it
         window = sg.Window('User Login/Signup', layout)
+
         while True:  # Event Loop
             event, values = window.Read()
             print(event, values)
             if event is None or event == 'Exit':
-                break
+                window.close()
+                return
             # input validation
             for name_input_key in ('s_fname', 's_lname'):
                 if len(values[name_input_key]) > name_maxlen:
@@ -144,18 +145,37 @@ def main():
         sg.popup_auto_close("Goodbye", auto_close_duration=1)
         exit()
 
-    logged_in_uid = show_login_signup(conn)
+    logged_in_uid, logged_in_fname, logged_in_lname = show_login_signup(conn)
+
+    if not logged_in_uid:
+        print("bruh")
+        exit()
     cur = conn.cursor()
 
-    row_names = "isbn, title, publish_date, num_pages, price"
+    row_names = "isbn, authors, title, publish_date, num_pages, price"
     # Query the database and obtain data as Python objects
-    cur.execute(f"SELECT {row_names} FROM books")
+    cur.execute(f"SELECT {row_names} FROM (select * FROM books NATURAL JOIN BookAuthorNames) b")
     books = cur.fetchall()
 
+    bookstore_tab = sg.Tab("Bookstore", [
+        [sg.Text('Select a book to purchase, and enter a quantity')],
+        [sg.Table(values=books, headings=row_names.split(", "), select_mode=sg.TABLE_SELECT_MODE_EXTENDED, k="book_table")],
+        [sg.Text("quantity:"), sg.Spin(values=[*range(1, 100)], key="in_quantity", size=3), sg.Button('Add to Cart')]
+    ])
+
+    current_cart = {'1234567890': ["harry Botter", 1, 15.99]}
+    cart_tab = sg.Tab("Cart", [
+        [sg.Text('This is your shopping cart')],
+        [sg.Table(values=[[key] + current_cart[key] for key in current_cart.keys()],
+                  headings=["isbn", "title", "quantity", "price"], select_mode=sg.TABLE_SELECT_MODE_NONE,
+                  k="cart_table")],
+        [sg.Button("Purchase")]
+    ])
     # Make the window
     layout = [
-        [sg.Text('Bookstore')],
-        [sg.Table(values=books, headings=row_names.split(", "), )],
+        [sg.Text(f"Hello, {logged_in_fname} {logged_in_lname}!")],
+        [sg.HSep()],
+        [sg.TabGroup([[bookstore_tab, cart_tab]])],
         [sg.Button('Exit')]
     ]
 
@@ -164,9 +184,28 @@ def main():
     # Event Loop to process "events" and get the "values" of the inputs
     while True:
         event, values = window.read()
+        print(event, values)
         if event == sg.WIN_CLOSED or event == 'Exit':  # if user closes window or clicks cancel
             break
 
+        if event == 'Add to Cart':
+            if len(values['book_table']) == 0:
+                sg.popup_ok("No book selected!")
+                continue
+
+            selected_quantity = values['in_quantity']
+            selected_book = books[values["book_table"][0]]
+            selected_isbn = selected_book[0]
+            selected_title = selected_book[2]
+            selected_price = selected_book[len(selected_book) - 1]
+
+            if selected_isbn in current_cart.keys():
+                current_cart[selected_isbn][1] += selected_quantity
+                current_cart[selected_isbn][2] += selected_price * selected_quantity
+            else:
+                current_cart[selected_isbn] = [selected_title, selected_quantity, selected_price * selected_quantity]
+            window.Element("cart_table").Update(values=[[key] + current_cart[key] for key in current_cart.keys()])
+            sg.popup_ok(f"Added {selected_quantity} copies of '{selected_title}' to cart!")
     window.close()
 
 
