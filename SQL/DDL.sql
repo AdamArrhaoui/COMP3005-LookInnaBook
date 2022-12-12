@@ -117,6 +117,30 @@ CREATE TABLE BooksInOrders (
 );
 
 
+
+DROP PROCEDURE IF EXISTS add_publisher;
+CREATE PROCEDURE add_publisher (
+    name VARCHAR(50),
+    bank_account NUMERIC(12, 0),
+    address VARCHAR(150),
+    email VARCHAR(100),
+    phone_numbers NUMERIC(10, 0)[]
+)
+AS $$
+BEGIN
+    WITH inserted_pid AS (
+        INSERT INTO Publishers (name, bank_account, address, email)
+            VALUES (name, bank_account, address, email)
+            RETURNING pid
+    )
+    INSERT INTO PublisherPhones (pid, phone_num)
+    SELECT pid, phone_num
+    FROM unnest(phone_numbers) as phone_num, inserted_pid as pid;
+END;
+$$ LANGUAGE plpgsql;
+
+
+DROP PROCEDURE IF EXISTS add_book;
 CREATE PROCEDURE add_book (
     IN isbn NUMERIC(10, 0),
     IN pid INT,
@@ -141,6 +165,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+
+DROP PROCEDURE IF EXISTS add_author_to_book;
 CREATE PROCEDURE add_author_to_book (
     IN isbn NUMERIC(10, 0),
     IN aid INT
@@ -152,3 +178,15 @@ BEGIN
     VALUES (isbn, aid);
 END;
 $$ LANGUAGE plpgsql;
+
+
+
+DROP VIEW IF EXISTS BookAuthorNames;
+CREATE VIEW BookAuthorNames AS (
+	SELECT b.isbn, STRING_AGG(a.fname || ' ' || a.lname, ', '
+							   ORDER BY a.lname, a.fname) as authors
+	FROM Books b
+	NATURAL JOIN BookAuthors ba
+	NATURAL JOIN Authors a
+	GROUP BY b.isbn
+);
